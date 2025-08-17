@@ -2,7 +2,7 @@ name: Build, Deploy & Release Chart
 
 on:
   push:
-    branches: [ main ]
+    # branches: [ main ]
     tags:
       - "v*.*.*"          # contoh: v0.1.0
       - "chart-v*.*.*"    # contoh: chart-v0.1.0
@@ -155,10 +155,10 @@ jobs:
     #     with:
     #       version: v1.29.2
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: v3.14.4
+    #   - name: Setup Helm
+    #     uses: azure/setup-helm@v4
+    #     with:
+    #       version: v3.14.4
 
       - name: Set up kubeconfig
         run: |
