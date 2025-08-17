@@ -1,0 +1,198 @@
+name: Build, Deploy & Release Chart
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - "v*.*.*"          # contoh: v0.1.0
+      - "chart-v*.*.*"    # contoh: chart-v0.1.0
+
+permissions:
+  contents: write   # perlu untuk push ke gh-pages & membuat Release
+  packages: write   # perlu untuk push image ke GHCR
+
+env:
+  CHART_PATH: ./charts
+  DIST_DIR: ./dist
+  RELEASE_NAME: gallery-app
+  NAMESPACE: gallery-app
+  IMAGE_REPO: ghcr.io/${{ github.repository }}
+  INGRESS_HOST: sample.local
+  VAULT_ADDR: http://192.168.1.19:8200
+  VAULT_AUTH_PATH: auth/gallery-app-k8s
+  VAULT_ROLE: gallery
+  VAULT_SECRET_MOUNT: gallery
+  VAULT_SECRET_PATH: minio/config
+  VAULT_SA_NAME: gallery-vault
+
+jobs:
+  build-and-push:
+    runs-on: [ self-hosted, X300 ]
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+      chart_version: ${{ steps.meta.outputs.chart_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive versions
+        id: meta
+        shell: bash
+        run: |
+          # Tentukan versi image & chart
+          # Tag "vX.Y.Z" atau "chart-vX.Y.Z" -> versi = X.Y.Z
+          # Push ke main -> versi = sha-<7>
+          REF="${GITHUB_REF_NAME}"
+          REF="${REF#chart-}"                # strip prefix "chart-"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VER="${REF#v}"
+          else
+            VER="sha-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+          echo "chart_version=${VER}" >> $GITHUB_OUTPUT
+          echo "Resolved version: ${VER}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ${{ env.IMAGE_REPO }}:${{ steps.meta.outputs.version }}
+            ${{ env.IMAGE_REPO }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  package-and-publish-chart:
+    needs: build-and-push
+    runs-on: [ self-hosted, X300 ]
+    outputs:
+      chart_tgz: ${{ steps.pkg.outputs.chart_tgz }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Helm lint
+        run: helm lint "${CHART_PATH}"
+
+      - name: Package chart
+        id: pkg
+        shell: bash
+        run: |
+          mkdir -p "${DIST_DIR}"
+          helm package "${CHART_PATH}" \
+            --version "${{ needs.build-and-push.outputs.chart_version }}" \
+            --app-version "${{ needs.build-and-push.outputs.chart_version }}" \
+            --destination "${DIST_DIR}"
+          TGZ=$(ls -1 ${DIST_DIR}/*.tgz | head -n1)
+          echo "chart_tgz=${TGZ}" >> $GITHUB_OUTPUT
+          echo "Packaged: ${TGZ}"
+
+      - name: Generate Helm repo index (GitHub Pages)
+        run: |
+          OWNER="${GITHUB_REPOSITORY%/*}"
+          REPO="${GITHUB_REPOSITORY#*/}"
+          helm repo index "${DIST_DIR}" --url "https://${OWNER}.github.io/${REPO}"
+
+      - name: Upload chart artifact (workflow)
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-chart-${{ needs.build-and-push.outputs.chart_version }}
+          path: ${{ env.DIST_DIR }}/*.tgz
+
+      - name: Publish to gh-pages (Helm repo)
+        if: github.ref_type == 'tag'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ env.DIST_DIR }}
+          publish_branch: gh-pages
+          keep_files: true
+
+      - name: Create GitHub Release with chart asset
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Helm Chart ${{ needs.build-and-push.outputs.chart_version }}"
+          files: ${{ env.DIST_DIR }}/*.tgz
+
+  deploy:
+    needs: [build-and-push]
+    runs-on: [ self-hosted, X300 ]
+    environment:
+      name: production
+      url: http://${{ env.INGRESS_HOST }}
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.29.2
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.4
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${KUBE_CONFIG_DATA}" | base64 -d > $HOME/.kube/config
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl get ns ${{ env.NAMESPACE }} || kubectl create ns ${{ env.NAMESPACE }}
+
+      - name: Helm upgrade --install (local chart path)
+        run: |
+          helm upgrade --install ${{ env.RELEASE_NAME }} ${{ env.CHART_PATH }} \
+            -n ${{ env.NAMESPACE }} \
+            --set image.repository=${{ env.IMAGE_REPO }} \
+            --set image.tag=${{ needs.build-and-push.outputs.image_tag }} \
+            --set vaultInjector.role=${{env.VAULT_ROLE }} \
+            --set vaultInjector.secretMount=${{ env.VAULT_SECRET_MOUNT}} \
+            --set vaultInjector.secretPath=${{ env.VAULT_SECRET_PATH }} \
+            --set serviceAccount.name=${{ env.VAULT_SA_NAME }} \
+            --set vaultInjector.authPath=${{ env.VAULT_AUTH_PATH}} \
+            --set vaultInjector.serviceURL=${{ env.VAULT_ADDR }} \
+            --set ingress.hosts[0].host=${{ env.INGRESS_HOST }} \
+            --set ingress.hosts[0].paths[0].path="/" \
+            --set ingress.hosts[0].paths[0].pathType="Prefix" \
+            --wait --timeout 5m
+
+
+
+
+
+
+
+
+

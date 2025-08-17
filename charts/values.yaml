@@ -2,14 +2,14 @@ replicaCount: 1
 
 image:
   repository: lethisaputri/flask-minio-gallery
-  tag: v3.0.0
+  tag: latest
   pullPolicy: IfNotPresent
   # pullSecrets:
   #   - name: my-regcred
 
 serviceAccount:
   create: true
-  name: "gallery-vault"
+  name: ""
   annotations: {}
   automount: true
 
@@ -32,7 +32,7 @@ ingress:
   className: nginx
   annotations: {}
   hosts:
-    - host: sample.local
+    - host: localhost
       paths:
         - path: /
           pathType: Prefix
@@ -64,10 +64,10 @@ vaultInjector:
   enabled: true
   role: "gallery"
   authType: "kubernetes"
-  authPath: "auth/gallery-app-k8s"
-  serviceURL: "http://192.168.1.19:8200"  # set empty "" if injector has global defaults
-  secretMount: "gallery"             # KV v2 mount name
-  secretPath: "minio/config"    # path inside the mount
+  authPath: ""
+  serviceURL: ""  # set empty "" if injector has global defaults
+  secretMount: ""             # KV v2 mount name
+  secretPath: ""    # path inside the mount
   templateFileName: "config.ini"
   renderInterval: "30s"         # how often to re-render KV v2
   sendHUP: true                 # send HUP to Gunicorn when template changes

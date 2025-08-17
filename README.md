@@ -63,4 +63,23 @@ flask-minio-gallery/
 - **Gagal resolusi host atau koneksi**: pastikan `ENDPOINT` benar dan jalur jaringan (firewall/proxy) mengizinkan.
 - **Gambar tidak muncul**: Coba perbesar durasi presigned URL (aturnya di `timedelta(days=...)` pada `index()`).
 
+## Helm Chart Install
+- Cara Install dengan Helm Charts
+
+```helm
+helm upgrade --install gallery ./charts \
+  -n gallery-app --create-namespace \
+  --set image.repository=lethisaputri/flask-minio-gallery \
+  --set image.tag=v3.0.0 \
+  --set ingress.hosts[0].host=sample.local \
+  --set ingress.hosts[0].paths[0].path="/" \
+  --set ingress.hosts[0].paths[0].pathType="Prefix" \
+  --set serviceAccount.name=gallery-vault \
+  --set vaultInjector.role=gallery \
+  --set vaultInjector.authPath=auth/gallery-app-k8s \
+  --set vaultInjector.serviceURL=http://192.168.1.19:8200 \
+  --set vaultInjector.secretMount=gallery \
+  --set vaultInjector.secretPath=minio/config
+```
+
 Selamat mencoba! 🎉
