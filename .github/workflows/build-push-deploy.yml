@@ -88,10 +88,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: v3.14.4
+    #   - name: Setup Helm
+    #     uses: azure/setup-helm@v4
+    #     with:
+    #       version: v3.14.4
 
       - name: Helm lint
         run: helm lint "${CHART_PATH}"
@@ -150,10 +150,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: v1.29.2
+    #   - name: Setup kubectl
+    #     uses: azure/setup-kubectl@v4
+    #     with:
+    #       version: v1.29.2
 
       - name: Setup Helm
         uses: azure/setup-helm@v4
