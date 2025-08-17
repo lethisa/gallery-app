@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MinIO Image Gallery</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="container">
+        <h1>📷 MinIO Image Gallery</h1>
+        <p class="muted">Bucket: <strong>{{ bucket }}</strong></p>
+    </header>
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash">
+              {% for category, msg in messages %}
+                <div class="flash-item {{ category }}">{{ msg }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="container footer">
+        <small>Flask + MinIO demo · Made for you ✨</small>
+    </footer>
+</body>
+</html>

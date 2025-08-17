@@ -1,0 +1,14 @@
+Thank you for installing {{ include "gallery.name" . }}!
+
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+  echo "http(s)://{{ (index .Values.ingress.hosts 0).host }}"
+{{- else }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "gallery.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit: http://127.0.0.1:8080"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:{{ .Values.service.port }}
+{{- end }}
+
+2. Make sure Vault secrets exist (KV v2 at {{ .Values.vaultInjector.secretMount }}/{{ .Values.vaultInjector.secretPath }}).
+
+3. Ensure Kubernetes Auth role {{ .Values.vaultInjector.role }} is configured to bind SA {{ include "gallery.serviceAccountName" . }} in namespace {{ .Release.Namespace }}.

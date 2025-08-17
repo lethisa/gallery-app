@@ -1,0 +1,94 @@
+replicaCount: 1
+
+image:
+  repository: lethisaputri/flask-minio-gallery
+  tag: v3.0.0
+  pullPolicy: IfNotPresent
+  # pullSecrets:
+  #   - name: my-regcred
+
+serviceAccount:
+  create: true
+  name: "gallery-vault"
+  annotations: {}
+  automount: true
+
+podAnnotations: {}
+
+podSecurityContext: {}
+#  fsGroup: 10001
+
+securityContext:
+  runAsUser: 10001
+  runAsGroup: 10001
+
+service:
+  type: ClusterIP
+  port: 5000
+  annotations: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: sample.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: gallery-tls
+  #   hosts:
+  #     - sample.local
+
+resources: {}
+#  limits:
+#    cpu: 500m
+#    memory: 512Mi
+#  requests:
+#    cpu: 50m
+#    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Environment variables that will go into a ConfigMap and be loaded with envFrom
+env:
+  FLASK_SECRET_KEY: "please-change-me"
+  CONFIG_SOURCE: "file"
+  CONFIG_PATH: "/vault/secrets/config.ini"
+
+# Vault Agent Injector settings (no app change, send HUP to Gunicorn on update)
+vaultInjector:
+  enabled: true
+  role: "gallery"
+  authType: "kubernetes"
+  authPath: "auth/gallery-app-k8s"
+  serviceURL: "http://192.168.1.19:8200"  # set empty "" if injector has global defaults
+  secretMount: "gallery"             # KV v2 mount name
+  secretPath: "minio/config"    # path inside the mount
+  templateFileName: "config.ini"
+  renderInterval: "30s"         # how often to re-render KV v2
+  sendHUP: true                 # send HUP to Gunicorn when template changes
+  shareProcessNamespace: true   # also set pod spec shareProcessNamespace=true
+  runAsSameUser: true           # let agent run as same user to send signals
+  copyVolumeMountsFrom: "web"   # copy volume mounts from the app container for PID file access
+  extraAnnotations: {}          # freeform extra annotations to attach to pod template
+
+gunicorn:
+  containerName: "web"
+  command: ["gunicorn"]
+  args:
+    - "-b"
+    - "0.0.0.0:5000"
+    - "--pid"
+    - "/pid/gunicorn.pid"
+    - "app:app"
+  pidVolumeName: "pid-share"
+  pidMountPath: "/pid"
+
+shareProcessNamespace: true  # native Pod spec field (recommended with sendHUP)
+
+# containerPorts allow override if needed
+containerPort: 5000

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gallery.fullname" . }}
+  labels:
+    {{- include "gallery.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gallery.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "gallery.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if .Values.vaultInjector.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/auth-type: "{{ .Values.vaultInjector.authType }}"
+        vault.hashicorp.com/auth-path: "{{ .Values.vaultInjector.authPath }}"
+        vault.hashicorp.com/role: "{{ .Values.vaultInjector.role }}"
+        {{- if .Values.vaultInjector.serviceURL }}
+        vault.hashicorp.com/service: "{{ .Values.vaultInjector.serviceURL }}"
+        {{- end }}
+        vault.hashicorp.com/agent-inject-secret-{{ .Values.vaultInjector.templateFileName }}: "{{ printf "%s/data/%s" .Values.vaultInjector.secretMount .Values.vaultInjector.secretPath }}"
+        vault.hashicorp.com/agent-inject-file-{{ .Values.vaultInjector.templateFileName }}: "{{ .Values.vaultInjector.templateFileName }}"
+        vault.hashicorp.com/agent-inject-template-{{ .Values.vaultInjector.templateFileName }}: |
+          {{`{{- with secret "`}}{{ printf "%s/data/%s" .Values.vaultInjector.secretMount .Values.vaultInjector.secretPath }}{{`" -}}`}}
+          [MINIO]
+          ENDPOINT = {{`{{ .Data.data.ENDPOINT }}`}}
+          ACCESS_KEY = {{`{{ .Data.data.ACCESS_KEY }}`}}
+          SECRET_KEY = {{`{{ .Data.data.SECRET_KEY }}`}}
+          BUCKET = {{`{{ .Data.data.BUCKET }}`}}
+          SECURE = {{`{{ .Data.data.SECURE }}`}}
+          {{`{{- end }}`}}
+        vault.hashicorp.com/template-static-secret-render-interval: "{{ .Values.vaultInjector.renderInterval }}"
+        {{- if .Values.vaultInjector.sendHUP }}
+        vault.hashicorp.com/agent-inject-command-{{ .Values.vaultInjector.templateFileName }}: >
+          /bin/sh -c 'kill -HUP $(cat {{ .Values.gunicorn.pidMountPath }}/gunicorn.pid) || true'
+        {{- end }}
+        {{- if .Values.vaultInjector.shareProcessNamespace }}
+        vault.hashicorp.com/agent-share-process-namespace: "true"
+        {{- end }}
+        {{- if .Values.vaultInjector.runAsSameUser }}
+        vault.hashicorp.com/agent-run-as-same-user: "true"
+        {{- end }}
+        {{- if .Values.vaultInjector.copyVolumeMountsFrom }}
+        vault.hashicorp.com/agent-copy-volume-mounts: "{{ .Values.vaultInjector.copyVolumeMountsFrom }}"
+        {{- end }}
+        {{- with .Values.vaultInjector.extraAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.shareProcessNamespace }}
+      shareProcessNamespace: true
+      {{- end }}
+      serviceAccountName: {{ include "gallery.serviceAccountName" . }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: {{ .Values.gunicorn.pidVolumeName }}
+          emptyDir: {}
+      containers:
+        - name: {{ .Values.gunicorn.containerName }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "gallery.fullname" . }}-env
+          volumeMounts:
+            - name: {{ .Values.gunicorn.pidVolumeName }}
+              mountPath: {{ .Values.gunicorn.pidMountPath }}
+          command: {{ toJson .Values.gunicorn.command }}
+          args: {{ toJson .Values.gunicorn.args }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: flask-minio-gallery
+description: Flask + MinIO image gallery with Vault Agent Injector reload (no app changes)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

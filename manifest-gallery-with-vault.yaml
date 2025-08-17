@@ -1,0 +1,118 @@
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: gallery-app
+# ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gallery-sa
+  namespace: gallery-app
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gallery-env
+  namespace: gallery-app
+data:
+  FLASK_SECRET_KEY: "please-change-me"
+  CONFIG_SOURCE: "file"
+  CONFIG_PATH: "/vault/secrets/config.ini"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-minio-gallery
+  namespace: gallery-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask-minio-gallery
+  template:
+    metadata:
+      labels:
+        app: flask-minio-gallery
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        # Role di Vault yang mengikat SA + namespace ini
+        vault.hashicorp.com/role: "gallery"
+        # <<< PATH MOUNT AUTH DI VAULT (GANTI JIKA CUSTOM) >>>
+        # Default: "auth/kubernetes", contoh custom: "auth/k8s-gallery"
+        vault.hashicorp.com/auth-path: "auth/gallery-app-k8s"
+        # (Opsional) set alamat Vault bila injector belum diset global
+        vault.hashicorp.com/service: "http://172.31.64.1:8200"
+        # Minta agent ambil secret KV-v2 di path data:
+        # CLI: vault kv put kv/minio/config ...  (tanpa /data)
+        # TAPI *annotation* KV-v2: gunakan "kv/data/..."
+        vault.hashicorp.com/agent-inject-secret-config.ini: "gallery/data/minio/config"
+        # Nama file hasil render
+        vault.hashicorp.com/agent-inject-file-config.ini: "config.ini"
+        # Template file config.ini untuk app
+        vault.hashicorp.com/agent-inject-template-config.ini: |
+          {{- with secret "gallery/data/minio/config" -}}
+          [MINIO]
+          ENDPOINT = {{ .Data.data.ENDPOINT }}
+          ACCESS_KEY = {{ .Data.data.ACCESS_KEY }}
+          SECRET_KEY = {{ .Data.data.SECRET_KEY }}
+          BUCKET = {{ .Data.data.BUCKET }}
+          SECURE = {{ .Data.data.SECURE }}
+          {{- end }}
+    spec:
+      serviceAccountName: gallery-vault
+      containers:
+        - name: web
+          image: lethisaputri/flask-minio-gallery:v1.0.0
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          ports:
+            - containerPort: 5000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: gallery-env
+          readinessProbe:
+            httpGet: { path: "/", port: http }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: "/", port: http }
+            initialDelaySeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-minio-gallery
+  namespace: gallery-app
+spec:
+  type: ClusterIP
+  selector:
+    app: flask-minio-gallery
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flask-minio-gallery
+  namespace: gallery-app
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: sample.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: flask-minio-gallery
+                port:
+                  number: 5000

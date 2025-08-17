@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <h2>Unggah Gambar</h2>
+    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" class="upload-form">
+        <input type="file" name="images" accept="image/*" multiple required />
+        <button type="submit">Upload</button>
+    </form>
+    <p class="muted">Format yang didukung: PNG, JPG, JPEG, GIF, WEBP. Maks 32MB per file (default).</p>
+</section>
+
+<section class="card">
+    <h2>Galeri</h2>
+    {% if images %}
+        <div class="grid">
+            {% for img in images %}
+                <figure class="tile">
+                    <a href="{{ img.url }}" target="_blank" rel="noopener">
+                        <img src="{{ img.url }}" alt="{{ img.name }}" loading="lazy" />
+                    </a>
+                    <figcaption title="{{ img.name }}">{{ img.name.rsplit('/', 1)[-1] }}</figcaption>
+                </figure>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Belum ada gambar. Unggah beberapa untuk memulai.</p>
+    {% endif %}
+</section>
+{% endblock %}

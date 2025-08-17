@@ -1,0 +1,13 @@
+[MINIO]
+# Alamat endpoint MinIO (tanpa protokol). Contoh: 127.0.0.1:9000 atau play.min.io:9000
+ENDPOINT = 127.0.0.1:9000
+
+# Kredensial akses
+ACCESS_KEY = minioadmin
+SECRET_KEY = minioadmin
+
+# Nama bucket untuk menyimpan gambar
+BUCKET = gallery
+
+# Gunakan HTTPS? (true/false). Set true jika endpoint Anda menggunakan TLS/HTTPS.
+SECURE = false
