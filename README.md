@@ -1,6 +1,6 @@
 # Flask MinIO Image Gallery
 
-[![Build, Deploy & Release Chart](https://github.com/lethisa/gallery-app/actions/workflows/build-push-deploy.yml/badge.svg?branch=main&event=release)](https://github.com/lethisa/gallery-app/actions/workflows/build-push-deploy.yml)
+[![Build, Deploy & Release Chart](https://github.com/lethisa/gallery-app/actions/workflows/build-push-deploy.yml/badge.svg)](https://github.com/lethisa/gallery-app/actions/workflows/build-push-deploy.yml)
 
 Aplikasi web sederhana berbasis **Flask** untuk **upload** dan **menampilkan** gambar yang disimpan di **MinIO Object Storage**.
 
