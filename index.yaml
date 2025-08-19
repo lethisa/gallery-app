@@ -2,14 +2,14 @@ apiVersion: v1
 entries:
   flask-minio-gallery:
   - apiVersion: v2
-    appVersion: 1.0.1
-    created: "2025-08-19T11:16:53.560301917+07:00"
+    appVersion: 1.0.2
+    created: "2025-08-19T14:02:46.730977375+07:00"
     description: Flask + MinIO image gallery with Vault Agent Injector reload (no
       app changes)
-    digest: dbf3e9ed25190765f051d58a9317b7d070d4ed52dae20fd7a78ba7f3145f3d27
+    digest: 2db20ced27b02a4112f1dc4d1c16d3dc5a68cac996701c2465559f880c0a7626
     name: flask-minio-gallery
     type: application
     urls:
-    - https://lethisa.github.io/gallery-app/flask-minio-gallery-1.0.1.tgz
-    version: 1.0.1
-generated: "2025-08-19T11:16:53.55826562+07:00"
+    - https://lethisa.github.io/gallery-app/flask-minio-gallery-1.0.2.tgz
+    version: 1.0.2
+generated: "2025-08-19T14:02:46.72504444+07:00"
