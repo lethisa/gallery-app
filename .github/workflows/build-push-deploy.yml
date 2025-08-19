@@ -18,7 +18,7 @@ env:
   NAMESPACE: gallery-app
   IMAGE_REPO: ghcr.io/${{ github.repository }}
   INGRESS_HOST: sample.local
-  VAULT_ADDR: http://192.168.1.19:8200
+  VAULT_ADDR: http://192.168.1.14:8200
   VAULT_AUTH_PATH: auth/gallery-app-k8s
   VAULT_ROLE: gallery
   VAULT_SECRET_MOUNT: gallery
@@ -27,7 +27,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: [ self-hosted, X300 ]
+    runs-on: [ self-hosted, IISM032483 ]
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
       chart_version: ${{ steps.meta.outputs.chart_version }}
@@ -82,7 +82,7 @@ jobs:
 
   package-and-publish-chart:
     needs: build-and-push
-    runs-on: [ self-hosted, X300 ]
+    runs-on: [ self-hosted, IISM032483 ]
     outputs:
       chart_tgz: ${{ steps.pkg.outputs.chart_tgz }}
     steps:
@@ -140,7 +140,7 @@ jobs:
 
   deploy:
     needs: [build-and-push]
-    runs-on: [ self-hosted, X300 ]
+    runs-on: [ self-hosted, IISM032483 ]
     environment:
       name: production
       url: http://${{ env.INGRESS_HOST }}

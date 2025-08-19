@@ -2,7 +2,7 @@
 # kind: Namespace
 # metadata:
 #   name: gallery-app
-# ---
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -41,7 +41,7 @@ spec:
         # Default: "auth/kubernetes", contoh custom: "auth/k8s-gallery"
         vault.hashicorp.com/auth-path: "auth/gallery-app-k8s"
         # (Opsional) set alamat Vault bila injector belum diset global
-        vault.hashicorp.com/service: "http://172.31.64.1:8200"
+        vault.hashicorp.com/service: "http://192.168.1.14:8200"
         # Minta agent ambil secret KV-v2 di path data:
         # CLI: vault kv put kv/minio/config ...  (tanpa /data)
         # TAPI *annotation* KV-v2: gunakan "kv/data/..."
