@@ -1,4 +1,6 @@
-# Flask + MinIO Image Gallery
+# Flask MinIO Image Gallery
+
+[![Build, Deploy & Release Chart](https://github.com/lethisa/gallery-app/actions/workflows/build-push-deploy.yml/badge.svg?branch=main&event=release)](https://github.com/lethisa/gallery-app/actions/workflows/build-push-deploy.yml)
 
 Aplikasi web sederhana berbasis **Flask** untuk **upload** dan **menampilkan** gambar yang disimpan di **MinIO Object Storage**.
 
@@ -64,22 +66,22 @@ flask-minio-gallery/
 - **Gambar tidak muncul**: Coba perbesar durasi presigned URL (aturnya di `timedelta(days=...)` pada `index()`).
 
 ## Helm Chart Install
-- Cara Install dengan Helm Charts
+- **Cara Install dengan Helm Charts**
 
 ```helm
-helm upgrade --install gallery ./charts \
-  -n gallery-app --create-namespace \
-  --set image.repository=lethisaputri/flask-minio-gallery \
-  --set image.tag=v3.0.0 \
-  --set ingress.hosts[0].host=sample.local \
+helm upgrade --install <name> ./charts \
+  -n <namespace> --create-namespace \
+  --set image.repository=<image> \
+  --set image.tag=<tag> \
+  --set ingress.hosts[0].host=<dns> \
   --set ingress.hosts[0].paths[0].path="/" \
   --set ingress.hosts[0].paths[0].pathType="Prefix" \
-  --set serviceAccount.name=gallery-vault \
-  --set vaultInjector.role=gallery \
-  --set vaultInjector.authPath=auth/gallery-app-k8s \
-  --set vaultInjector.serviceURL=http://192.168.1.19:8200 \
-  --set vaultInjector.secretMount=gallery \
-  --set vaultInjector.secretPath=minio/config
+  --set serviceAccount.name=<service account> \
+  --set vaultInjector.role=<role> \
+  --set vaultInjector.authPath=<auth path> \
+  --set vaultInjector.serviceURL=<vault address> \
+  --set vaultInjector.secretMount=<secret mount> \
+  --set vaultInjector.secretPath=<secret path>
 ```
 
-Selamat mencoba! 🎉
+Selamat mencoba! kawan 🎉
