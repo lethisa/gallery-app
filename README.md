@@ -9,7 +9,7 @@ Aplikasi web sederhana berbasis **Flask** untuk **upload** dan **menampilkan** g
 - Validasi ekstensi gambar (PNG, JPG, JPEG, GIF, WEBP)
 - Menyimpan objek di bucket MinIO
 - Menampilkan galeri dengan presigned URL (berlaku 7 hari; sesuaikan bila perlu)
-- Auto-create bucket jika belum ada
+- Auto-create bucket jika belum ada, maka dibuat secara otomatis
 
 ## Struktur Proyek
 ```
